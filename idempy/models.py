@@ -1,5 +1,6 @@
 from datetime import datetime
 from dataclasses import dataclass 
+from enum import Enum
 
 class Status(str, Enum): 
     PENDING = 'pending'
@@ -16,4 +17,3 @@ class IdempotencyKey:
     result_data: bytes | None = None
     result_status: int | None = None
     result_error: str | None = None
-    
