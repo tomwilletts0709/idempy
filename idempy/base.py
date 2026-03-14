@@ -4,13 +4,11 @@ from idempy.models import IdempotencyKey, Status
 
 class BaseStore(ABC): 
     @abstractmethod
-    def get(self, key: str, IdempotencyKey: IdempotencyKey) -> None:
-        self.idempotency_key = IdempotencyKey
-        if not self.idempotency_key:
-            raise IdempotencyError("Idempotency key not found")
+    def get(self, key: str) -> IdempotencyKey | None:
+        raise NotImplementedError
 
     @abstractmethod
-    def create_in_progress(self, key: str, fingerprint: str) -> Bool:
+    def create_in_progress(self, key: str, fingerprint: str) -> bool:
         raise NotImplementedError
     
     @abstractmethod
