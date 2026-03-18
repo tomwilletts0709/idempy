@@ -25,3 +25,9 @@ def test_validate_fingerprint(core):
 def test_validate_fingerprint_failure(core):
     fingerprint = None
     assert core.validate_fingerprint(fingerprint) is False
+
+def test_missing_idempotency_key(core):
+    request = {
+        'fingerprint': '1234567890',
+    }
+    assert core.validate_request(request) is False
