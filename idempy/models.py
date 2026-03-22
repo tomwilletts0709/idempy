@@ -2,6 +2,11 @@ from datetime import datetime
 from dataclasses import dataclass 
 from enum import Enum
 
+class BeginAction(str, Enum):
+    INVALID_REQUEST = 'invalid_request'
+    CONFLICT = 'conflict'
+    SUCCESS = 'success'
+
 class Status(str, Enum): 
     PENDING = 'pending'
     SUCCESS = 'success'
