@@ -10,6 +10,7 @@ class BeginAction(str, Enum):
     CONFLICT = "conflict"
     SUCCESS = "success"
     FAILED = "failed"
+    NOT_FOUND = "not_found"
 
 class Status(str, Enum): 
     PENDING = 'pending'
