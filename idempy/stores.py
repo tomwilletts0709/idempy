@@ -1,4 +1,4 @@
-from typing TYPE_CHECKING, Dict, Any
+from typing TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from idempy.core import Core
