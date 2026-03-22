@@ -83,11 +83,30 @@ class Core:
         fail_result.record.updated_at = datetime.now()
         return fail_result.record.status
 
-    def replay(self, request: Request) -> None:
+    def replay(self, request: Request) -> ReplayResult:
+        if not self.validate_request(request):
+            return ReplayResult(action=ReplayAction.INVALID_REQUEST, message='Invalid request')
+        
+        idempotency_key = self.build_idempotency_key(request)
+        fingerprint = self.build_fingerprint(request)
+        store = self.get_store(request.store)
+
+        if store.get(idempotency_key) is None:
+            return ReplayResult(action=ReplayAction.NOT_FOUND, message='Replay not found')
+    
+        return ReplayResult(action=ReplayAction.SUCCESS, message='Replay found', record=store.get(idempotency_key))
         
 
     def get_status(self, request: Request) -> Status:
-        pass
+        
+        idempotency_key = self.build_idempotency_key(request)
+        fingerprint = self.build_fingerprint(request)
+        store = self.get_store(request.store)
+
+        if store.get(idempotency_key) is None:
+            return Status.NOT_FOUND
+        
+        return store.get(idempotency_key).status
 
         
         
