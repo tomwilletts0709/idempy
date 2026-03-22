@@ -18,7 +18,7 @@ class State(str, Enum):
     REPLAY = 'replay'
     PROCESS = 'process'
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class IdempotencyKey:
     key: str
     fingerprint: str
@@ -29,7 +29,7 @@ class IdempotencyKey:
     result_status: int | None = None
     result_error: str | None = None
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Request:
     idempotency_key: str
     fingerprint: str
@@ -44,7 +44,7 @@ class Request:
     json: dict[str, Any]
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class IdempotencyRecord:
     status: Status
     idempotency_key: IdempotencyKey
@@ -54,7 +54,7 @@ class IdempotencyRecord:
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class BeginResult:
     action: BeginAction
     record: IdempotencyRecord | None = None
