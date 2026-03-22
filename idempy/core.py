@@ -7,6 +7,7 @@ from idempy.memory import MemoryStore
 import hashlib
 from idempy.errors import IdempotencyKeyNotFoundError, IdempotencyKeyAlreadyExistsError, IdempotencyKeyInvalidError
 from idempy.validator import ValidatedField, non_empty, min_value
+from idempy.models import BeginAction, Status
 
 
 
@@ -69,14 +70,18 @@ class Core:
         return BeginResult(action=BeginAction.SUCCESS, message='Success')
 
 
-    def complete(self, request: Request) -> Bool:
-        if self.request is True: 
-            return f"Request Successfully Completed"
-        else:
-            return f"Request Failed"
+    def complete(self, complete_result: CompleteResult, result: Any) -> Status:
+        complete_result.record.status = Status.SUCCESS
+        complete_result.record.result = result
+        complete_result.record.updated_at = datetime.now()
+        return complete_result.record.status
 
 
-    def fail(self, request: Request) -> None:
+    def fail(self, fail_result: FailResult) -> Status:
+        fail_result.record.status = Status.FAILED
+        fail_result.record.error = fail_result.error
+        fail_result.record.updated_at = datetime.now()
+        return fail_result.record.status
 
     def replay(self, request: Request) -> None:
         
