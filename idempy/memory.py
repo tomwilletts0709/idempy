@@ -2,6 +2,7 @@ import time
 from typing import Dict, Any, Optional, Callable
 from idempy.base import BaseStore
 from idempy.models import IdempotencyKey, Status
+from threading import Lock
 
 class MemoryStore(BaseStore):
     """ in memory store for idempotency keys """
