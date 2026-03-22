@@ -48,7 +48,7 @@ class Request:
     json: dict[str, Any]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class IdempotencyRecord:
     status: Status
     idempotency_key: IdempotencyKey
