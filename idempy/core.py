@@ -68,18 +68,18 @@ class Core:
         store.create_in_progress(idempotency_key, fingerprint)
         return BeginResult(action=BeginAction.SUCCESS, message='Success')
 
-    
 
+    def complete(self, request: Request) -> Bool:
+        if self.request is True: 
+            return f"Request Successfully Completed"
+        else:
+            return f"Request Failed"
 
-
-    def complete(self, request: Request) -> None:
-        pass 
 
     def fail(self, request: Request) -> None:
-        pass 
 
     def replay(self, request: Request) -> None:
-        pass
+        
 
     def get_status(self, request: Request) -> Status:
         pass
