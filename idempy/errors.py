@@ -1,7 +1,12 @@
 from typing import Any
+import sys 
+import os 
+import traceback
 
 class IdempotencyError(Exception):
-    pass
+    def __init__(self, idempotency_error: str) -> None:
+        self.idempotency_error = idempotency_error
+        super().__init__(self.idempotency_error)
 
 class IdempotencyKeyNotFoundError(IdempotencyError):
     pass
