@@ -57,3 +57,14 @@ def test_begin_replay_same_request(core):
     assert first.action == BeginAction.SUCCESS
     second = core.begin(request)
     assert second.action == BeginAction.REPLAY
+
+def test_begin_conflict(core):
+    request = {
+        "idempotency_key": "conflict-key",
+        "fingerprint": "conflict-fingerprint",
+    }
+    first = core.begin(request)
+    assert first.action == BeginAction.SUCCESS
+    second = core.begin(request)
+    assert second.action == BeginAction.CONFLICT
+

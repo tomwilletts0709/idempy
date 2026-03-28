@@ -1,0 +1,26 @@
+import pytest
+
+from idempy.core import core
+from idemp.memory import MemoryStore
+
+
+def request(idempotency_key: str, fingerprint: str) -> Request: 
+    return Request(
+        idempotency_key=idempotency_key,
+        fingerprint=fingerprint,
+        method="GET",
+        path="/",
+        url="https://example.com",
+        headers={},
+        body=b"",
+        query_params={},
+        path_params={},
+        cookies={},
+        json={},
+    )
+
+@pytest.fixture
+def core(): 
+    return Core()
+
+def test_begin_complete_replay_and_status()

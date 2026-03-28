@@ -25,3 +25,10 @@ def test_get_store_not_found(stores):
 def test_get_store_no_default():
     stores = Stores(stores={"memory": MemoryStore()})
     assert stores.get() is not None
+
+def test_create_in_progress():
+    stores = Stores(stores={"memory": MemoryStore()})
+    assert stores.get("memory").create_in_progress("test", "test") is True
+    assert stores.get("memory").create_in_progress("test", "test") is False
+    assert stores.get("memory").get("test") is not None
+
