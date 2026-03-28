@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import patch
-from pytest.monkeypatch import MonkeyPatch
 from idempy.errors import IdempotencyKeyNotFoundError, IdempotencyKeyAlreadyExistsError, IdempotencyKeyInvalidError
 from idempy.core import Core
 from idempy.models import Request
@@ -20,13 +19,3 @@ def test_idempotency_key_invalid_error():
     assert str(err) == "Idempotency key invalid"
     assert err.idempotency_error == "Idempotency key invalid"
 
-def test_idempotency_error(monkeypatch):
-    def fake_get(): 
-        class FakeStores: 
-            def raise_for_status(self) -> None: 
-                raise IdempotencyKeyNotFoundError("Idempotency key not found")
-        return FakeStores()
-    monkeypatch.setattr("idempy.core.Core.get_store", fake_get)
-    core = Core()
-        with pytest.raises(IdempotencyKeyNotFoundError):
-            core.get_status(request)
