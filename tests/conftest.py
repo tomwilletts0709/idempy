@@ -2,7 +2,7 @@ import pytest
 from idempy.models import Request
 
 @pytest.fixture
-mock_request():
+def mock_request():
     return Request(
         idempotency_key="test",
         fingerprint="test",
@@ -12,5 +12,5 @@ mock_request():
     )
 
 @pytest.fixture
-mock_redis()
+def mock_redis():
     return mock_request()
