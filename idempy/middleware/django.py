@@ -4,13 +4,13 @@ Add to ``settings.py``::
 
     MIDDLEWARE = [
         ...
-        "idempy.django_middleware.IdemMiddleware",
+        "idempy.middleware.django.IdemMiddleware",
     ]
 
 Optionally configure via ``settings.py``::
 
     IDEMPY = {
-        "header_name": "Idempotency-Key",   # default
+        "header_name": "Idempotency-Key",        # default
         "safe_methods": {"GET", "HEAD", "OPTIONS"},  # default
         "replay_content_type": "application/json",   # default
     }
@@ -18,7 +18,7 @@ Optionally configure via ``settings.py``::
 To pass a custom ``Core`` instance (e.g. with a Redis store), configure it
 before Django starts and assign it to the middleware class directly::
 
-    from idempy.django_middleware import IdemMiddleware
+    from idempy.middleware.django import IdemMiddleware
     from idempy import Core
 
     IdemMiddleware.core = Core(settings={...})

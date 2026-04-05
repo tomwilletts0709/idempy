@@ -1,7 +1,7 @@
 import json
 import pytest
 from flask import Flask, jsonify
-from idempy.flask_middleware import IdemMiddleware
+from idempy.middleware.flask import IdemMiddleware
 
 
 @pytest.fixture

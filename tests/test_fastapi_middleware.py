@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from idempy import Core, MemoryStore
-from idempy.fastapi_middleware import IdemMiddleware
+from idempy.middleware.fastapi import IdemMiddleware
 
 
 def make_app() -> FastAPI:

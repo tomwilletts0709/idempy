@@ -10,7 +10,7 @@ if not django_settings.configured:
         DATABASES={},
         INSTALLED_APPS=["django.contrib.contenttypes", "django.contrib.auth"],
         ROOT_URLCONF=__name__,
-        MIDDLEWARE=["idempy.django_middleware.IdemMiddleware"],
+        MIDDLEWARE=["idempy.middleware.django.IdemMiddleware"],
         SECRET_KEY="test-secret",
         ALLOWED_HOSTS=["testserver", "localhost"],
     )
@@ -21,7 +21,7 @@ from django.test import RequestFactory
 from django.urls import path
 
 from idempy import Core, MemoryStore
-from idempy.django_middleware import IdemMiddleware
+from idempy.middleware.django import IdemMiddleware
 
 
 # ── minimal URL conf (required by ROOT_URLCONF) ──────────────────────────────

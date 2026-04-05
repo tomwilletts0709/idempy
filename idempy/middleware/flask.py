@@ -2,7 +2,7 @@
 
 Usage — application factory::
 
-    from idempy.flask_middleware import IdemMiddleware
+    from idempy.middleware.flask import IdemMiddleware
 
     middleware = IdemMiddleware()
 

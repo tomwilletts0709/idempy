@@ -3,7 +3,7 @@
 Usage::
 
     from fastapi import FastAPI
-    from idempy.fastapi_middleware import IdemMiddleware
+    from idempy.middleware.fastapi import IdemMiddleware
 
     app = FastAPI()
     app.add_middleware(IdemMiddleware)
