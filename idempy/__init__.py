@@ -1,3 +1,4 @@
+import idempy.logging  # registers NullHandler on the idempy logger
 from idempy.core import Core
 from idempy.memory import MemoryStore
 from idempy.stores import Stores

@@ -1,6 +1,9 @@
 import hashlib
+import logging
 from datetime import datetime
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from idempy.memory import MemoryStore
 from idempy.models import (
@@ -131,6 +134,7 @@ class Core:
         """
         req = self._to_request(request) if isinstance(request, dict) else request
         if not self.validate_request(req):
+            logger.warning("begin: invalid request — missing or empty idempotency key")
             return BeginResult(action=BeginAction.INVALID_REQUEST, message='Invalid request')
 
         idempotency_key = self.build_idempotency_key(req)
@@ -140,14 +144,17 @@ class Core:
         existing = store.get(idempotency_key)
         if existing is not None:
             if existing.fingerprint == fingerprint:
+                logger.debug("begin: replay key=%s", idempotency_key)
                 return BeginResult(
                     action=BeginAction.REPLAY,
                     record=self._key_to_record(existing, req),
                     message='Replay',
                 )
+            logger.warning("begin: conflict key=%s", idempotency_key)
             return BeginResult(action=BeginAction.CONFLICT, message='Conflict')
 
         store.create_in_progress(idempotency_key, fingerprint)
+        logger.debug("begin: new key=%s", idempotency_key)
         now = datetime.now()
         key_obj = IdempotencyKey(
             key=idempotency_key,
@@ -192,6 +199,7 @@ class Core:
         record.status = Status.SUCCESS
         record.result = result_data
         record.updated_at = datetime.now()
+        logger.info("complete: key=%s status=%s", record.idempotency_key.key, result_status)
         return Status.SUCCESS
 
     def fail(self, record: IdempotencyRecord, result_error: str) -> Status:
@@ -209,6 +217,7 @@ class Core:
         record.status = Status.FAILED
         record.error = RuntimeError(result_error)
         record.updated_at = datetime.now()
+        logger.warning("fail: key=%s error=%r", record.idempotency_key.key, result_error)
         return Status.FAILED
 
     def replay(self, request: Request) -> ReplayResult:
