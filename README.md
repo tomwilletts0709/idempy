@@ -2,44 +2,133 @@
 
 A lightweight Python library for handling idempotent operations safely.
 
-`idempy` helps prevent duplicate side effects when the same operation is retried. It is designed for backend systems where a request, job, or command may be sent more than once and must only be processed once.
+`idempy` prevents duplicate side effects when the same operation is retried. It tracks idempotency keys and request fingerprints, stores execution state, and replays prior outcomes for duplicate requests — so your side effects happen exactly once.
 
 ## Why this exists
 
-In real systems, duplicate requests happen all the time:
+Duplicate requests are a fact of distributed systems:
 
 - clients retry after timeouts
 - users double-submit forms
 - webhooks are delivered more than once
-- background jobs are replayed
+- background jobs are replayed on worker failure
 
-Without idempotency, this can lead to duplicated side effects such as:
+Without idempotency this leads to duplicate charges, duplicate records, and duplicate events. `idempy` gives you a structured, store-backed mechanism to detect and short-circuit these cases.
 
-- charging a payment twice
-- creating duplicate records
-- processing the same event multiple times
+## How it works
 
-`idempy` tracks **idempotency keys** and **request fingerprints**, stores execution state and results, and lets you **replay** a prior outcome when the same logical request arrives again.
+Every operation follows the same lifecycle:
 
-## What works today
+```
+begin()  ──► NEW?     → do the work → complete() or fail()
+         ──► REPLAY?  → return cached result (skip the work)
+         ──► CONFLICT? → reject (same key, different request)
+```
 
-The **pure Python core** provides:
+`begin()` is the gate. It creates a PENDING record on first call, or surfaces the prior outcome on retry. `complete()` and `fail()` seal the record. `replay()` and `get_status()` let you inspect it later.
 
-- **`Core`** — `begin`, `complete`, `fail`, `replay`, and `get_status` over a pluggable store
-- **`Stores`** — named backends (e.g. `memory`) with a default
-- **`MemoryStore`** — in-process implementation of `BaseStore` with TTL-style expiry
-- **`Request`** / **`IdempotencyRecord`** — typed models and result enums (`BeginAction`, `ReplayResult`, `Status`, …)
-- **`validator`** — optional `ValidatedField` helpers for boundary validation
+## Quick start
 
-See [docs/lifecycle.md](docs/lifecycle.md) for the full flow and roadmap.
+```python
+from idempy import Core, BeginAction
+
+core = Core()
+
+# Works with a plain dict or a fully typed Request object
+result = core.begin({
+    "idempotency_key": "pay-001",
+    "fingerprint": "sha256-of-request-body",
+})
+
+if result.action == BeginAction.REPLAY:
+    return result.record          # cached — do not charge again
+
+if result.action == BeginAction.CONFLICT:
+    raise Exception("409 Conflict")  # same key, different payload
+
+if result.action == BeginAction.SUCCESS:
+    response = charge_card()      # first time — do the work
+    core.complete(result.record, result_data=response, result_status=200)
+```
+
+On retry with the same key and fingerprint:
+
+```python
+result = core.begin({"idempotency_key": "pay-001", "fingerprint": "sha256-of-request-body"})
+assert result.action == BeginAction.REPLAY   # no double charge
+```
+
+## API
+
+### `Core(settings=None)`
+
+| Method | Description |
+|---|---|
+| `begin(request)` | Start an operation or surface a prior outcome |
+| `complete(record, result_data, result_status)` | Mark as succeeded, store the response |
+| `fail(record, result_error)` | Mark as failed, store the error |
+| `replay(request)` | Fetch the stored result for a completed request |
+| `get_status(request)` | Return the current `Status` for a key |
+
+`begin()` accepts either a `Request` dataclass or a plain `dict` with at minimum `idempotency_key` and `fingerprint`.
+
+### `BeginAction` values
+
+| Value | Meaning |
+|---|---|
+| `SUCCESS` | New request — proceed with the operation |
+| `REPLAY` | Seen before — return cached result |
+| `CONFLICT` | Same key, different fingerprint — reject |
+| `INVALID_REQUEST` | Missing or empty idempotency key |
+
+### Settings
+
+```python
+core = Core(settings={
+    "idempy_key_prefix": "myapp_",    # prefix for all stored keys
+    "stores": {"memory": MemoryStore()},
+    "default_store": "memory",
+})
+```
+
+## Stores
+
+`BaseStore` is an abstract interface. Implement it to plug in any backend.
+
+| Store | Use case |
+|---|---|
+| `MemoryStore` | Single-process apps, testing, local dev |
+| Redis / SQL | Multi-process, multi-server (not yet built-in — implement `BaseStore`) |
+
+`MemoryStore` is thread-safe and applies a 30-day TTL via lazy expiry. It does not survive process restarts.
+
+## Fingerprints
+
+A fingerprint is a stable, canonical hash of the logical request — typically a SHA-256 of the HTTP method, path, and body. `idempy` compares fingerprints but does not compute them; the caller supplies one. This allows flexibility in what constitutes "the same request" for your domain.
+
+```python
+import hashlib
+
+fingerprint = hashlib.sha256(b"POST /payments {amount: 100}").hexdigest()
+```
+
+## Validation
+
+`ValidatedField` is an optional descriptor for adding cast-and-validate behaviour to class fields:
+
+```python
+from idempy import ValidatedField, non_empty, min_value
+
+class Config:
+    name    = ValidatedField(str, (non_empty,))
+    retries = ValidatedField(int, (min_value(0),))
+```
 
 ## Requirements
 
-- Python **3.11+**
+Python **3.11+**, no runtime dependencies.
 
 ## Installation
-
-From a checkout of this repository:
 
 ```bash
 pip install -e ".[dev]"
@@ -51,60 +140,29 @@ Or with [uv](https://github.com/astral-sh/uv):
 uv sync --extra dev
 ```
 
-Install in editable mode so imports like `import idempy` work when running tests and local scripts.
-
-## Quick usage
-
-```python
-from idempy import Core, BeginAction
-
-core = Core()
-
-req = {
-    "idempotency_key": "pay-001",
-    "fingerprint": "canonical-body-or-hash-from-client",
-}
-
-out = core.begin(req)
-if out.action == BeginAction.INVALID_REQUEST:
-    ...
-elif out.action == BeginAction.REPLAY:
-    # Same key + same fingerprint — use stored result, do not charge again
-    ...
-elif out.action == BeginAction.CONFLICT:
-    # Same key, different fingerprint — reject
-    ...
-elif out.action == BeginAction.SUCCESS and out.record:
-    # First time — run your side effect, then persist outcome
-    core.complete(out.record, result_data=b"{}", result_status=200)
-```
-
-For production you will typically build a full **`Request`** (method, path, headers, body, etc.) and plug in a **durable store** (Redis, SQL) instead of the default in-memory backend.
-
 ## Development
 
-Run tests from the repository root (after editable install):
-
 ```bash
-pytest
+pytest                              # all tests
+pytest tests/integration/           # integration tests only
 ```
 
 ## Project structure
 
-```text
-.
-├── pyproject.toml      # packaging + dev deps (pytest)
-├── uv.lock             # lockfile when using uv
-├── docs/
-│   └── lifecycle.md    # lifecycle + roadmap
-├── idempy/
-│   ├── __init__.py
-│   ├── base.py         # BaseStore ABC
-│   ├── core.py         # Core orchestration
-│   ├── errors.py
-│   ├── memory.py       # MemoryStore
-│   ├── models.py
-│   ├── stores.py       # Stores registry
-│   └── validator.py
-└── tests/
+```
+idempy/
+├── base.py         BaseStore ABC — implement this for custom backends
+├── core.py         Core orchestration (begin / complete / fail / replay / get_status)
+├── errors.py       Exception hierarchy
+├── memory.py       MemoryStore — thread-safe in-process backend
+├── models.py       Dataclasses and enums (Request, IdempotencyRecord, Status, …)
+├── stores.py       Stores registry
+└── validator.py    ValidatedField descriptor + built-in validators
+
+tests/
+├── integration/    End-to-end lifecycle tests
+└── ...             Unit tests per module
+
+docs/
+└── lifecycle.md    Architecture, flow, and roadmap
 ```
