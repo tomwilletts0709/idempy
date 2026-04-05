@@ -7,7 +7,12 @@ from idempy.models import IdempotencyKey, Status
 
 
 class MemoryStore(BaseStore):
-    """In-memory store for idempotency keys."""
+    """Thread-safe, in-process idempotency store backed by a plain dict.
+
+    Suitable for single-process applications, local development, and testing.
+    Records are lazily expired based on ``expiry_seconds`` (default 30 days).
+    Use a durable backend (e.g. Redis, PostgreSQL) for multi-process deployments.
+    """
 
     expiry_seconds: int = 60 * 60 * 24 * 30  # 30 days
 
@@ -18,12 +23,14 @@ class MemoryStore(BaseStore):
             self.store.clear()
 
     def _is_expired(self, record: IdempotencyKey) -> bool:
+        """Return ``True`` if *record* is older than ``expiry_seconds``."""
         if record.updated_at is None:
             return False
         elapsed = (datetime.now() - record.updated_at).total_seconds()
         return elapsed > self.expiry_seconds
 
     def get(self, key: str) -> Optional[IdempotencyKey]:
+        """Return the record for *key*, or ``None`` if missing or expired."""
         with self._lock:
             record = self.store.get(key)
             if record is None:
@@ -34,6 +41,10 @@ class MemoryStore(BaseStore):
             return record
 
     def create_in_progress(self, key: str, fingerprint: str) -> bool:
+        """Atomically insert a PENDING record.
+
+        Returns ``False`` without modifying the store if *key* already exists.
+        """
         now = datetime.now()
         record = IdempotencyKey(
             key=key,
@@ -55,6 +66,7 @@ class MemoryStore(BaseStore):
         result_data: bytes,
         result_status: int,
     ) -> bool:
+        """Transition *key* to SUCCESS, storing the serialised response body and HTTP status."""
         with self._lock:
             record = self.store.get(key)
             if record is None or record.fingerprint != fingerprint:
@@ -73,6 +85,7 @@ class MemoryStore(BaseStore):
         return True
 
     def mark_failed(self, key: str, fingerprint: str, result_error: str) -> bool:
+        """Transition *key* to FAILED, storing the error description."""
         with self._lock:
             record = self.store.get(key)
             if record is None or record.fingerprint != fingerprint:
@@ -90,6 +103,7 @@ class MemoryStore(BaseStore):
         return True
 
     def delete(self, key: str) -> bool:
+        """Remove *key* from the store. Returns ``True`` if it existed."""
         with self._lock:
             if key in self.store:
                 del self.store[key]
