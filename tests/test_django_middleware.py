@@ -12,6 +12,7 @@ if not django_settings.configured:
         ROOT_URLCONF=__name__,
         MIDDLEWARE=["idempy.django_middleware.IdemMiddleware"],
         SECRET_KEY="test-secret",
+        ALLOWED_HOSTS=["testserver", "localhost"],
     )
     django.setup()
 
